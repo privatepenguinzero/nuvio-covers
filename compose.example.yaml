@@ -1,0 +1,20 @@
+services:
+  nuvio-covers:
+    image: ghcr.io/privatepenguinzero/nuvio-covers:latest
+    container_name: nuvio-covers
+    restart: unless-stopped
+    environment:
+      TMDB_API_KEY: ${TMDB_API_KEY}
+      REFRESH_TOKEN: ${REFRESH_TOKEN:-}
+      TZ: Europe/Rome
+      SCHEDULE_WEEKDAY: 0   # Monday
+      SCHEDULE_HOUR: 5
+    volumes:
+      - covers:/data
+      # optional: override the bundled config without rebuilding
+      # - ./config.json:/app/config.json:ro
+    ports:
+      - "8080:8080"
+
+volumes:
+  covers:
