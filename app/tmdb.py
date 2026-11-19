@@ -35,3 +35,24 @@ def discover(api_key: str, media: str, params: dict, language: str = "en-US") ->
 
 def poster_urls(results: list[dict], limit: int) -> list[str]:
     return [IMG + r["poster_path"] for r in results if r.get("poster_path")][:limit]
+
+
+LOGO = "https://image.tmdb.org/t/p/original"
+
+
+def _get(api_key: str, path: str) -> dict:
+    url = f"{API}{path}?{urllib.parse.urlencode({'api_key': api_key})}"
+    req = urllib.request.Request(url, headers={"User-Agent": "nuvio-covers/1.0"})
+    with urllib.request.urlopen(req, timeout=30) as resp:
+        return json.load(resp)
+
+
+def logo_url(api_key: str, *, network: int | None = None, company: int | None = None) -> str | None:
+    """URL of the best-voted transparent logo of a TMDB network or company."""
+    if network:
+        logos = _get(api_key, f"/network/{network}/images").get("logos", [])
+    elif company:
+        logos = _get(api_key, f"/company/{company}/images").get("logos", [])
+    else:
+        return None
+    return LOGO + logos[0]["file_path"] if logos else None

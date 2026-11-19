@@ -14,6 +14,22 @@ rappresenta, più un'etichetta colorata (`NEW`), una didascalia e un titolo gran
 
 L'URL non cambia mai, cambia solo l'immagine: in Nuvio la copertina va impostata una volta sola.
 
+Per ogni copertina vengono generati anche lo **sfondo hero** senza scritte (`/novita/film-hero.jpg`)
+e il **logo** trasparente con la scritta (`/novita/film-logo.png`), da usare nei campi "Hero backdrop"
+e "Title logo" delle cartelle.
+
+## Piattaforme
+
+La sezione `providers` di `config.json` genera per ogni servizio:
+
+| File | Contenuto |
+|---|---|
+| `/brand/<slug>.png` | logo ufficiale da TMDB (network o company), su fondo trasparente; i loghi neri diventano bianchi |
+| `/piattaforme/<regione>/<slug>-hero.jpg` | muro dei titoli più visti di quel servizio in quella regione, senza scritte |
+
+Se TMDB non ha un logo (`"logo": {"text": "RaiPlay"}`) viene disegnata la scritta. Una piattaforma
+che fallisce tiene le immagini della settimana prima e non blocca le altre.
+
 ## Avvio
 
 ```bash

@@ -18,7 +18,8 @@
         "primary_release_date.lte": "today",
         "vote_count.gte": 50,
         "sort_by": "popularity.desc"
-      }
+      },
+      "hero": true
     },
     {
       "folder": "novita",
@@ -39,7 +40,8 @@
         "first_air_date.lte": "today",
         "vote_count.gte": 20,
         "sort_by": "popularity.desc"
-      }
+      },
+      "hero": true
     },
     {
       "folder": "novita",
@@ -61,6 +63,206 @@
         "first_air_date.lte": "-1y",
         "vote_count.gte": 200,
         "sort_by": "popularity.desc"
+      },
+      "hero": true
+    }
+  ],
+  "providers": [
+    {
+      "slug": "netflix",
+      "name": "Netflix",
+      "logo": {
+        "network": 213
+      },
+      "regions": {
+        "us": {
+          "region": "US",
+          "providers": "8"
+        },
+        "it": {
+          "region": "IT",
+          "providers": "8"
+        }
+      }
+    },
+    {
+      "slug": "prime",
+      "name": "Prime Video",
+      "logo": {
+        "network": 1024
+      },
+      "regions": {
+        "us": {
+          "region": "US",
+          "providers": "9"
+        },
+        "it": {
+          "region": "IT",
+          "providers": "119"
+        }
+      }
+    },
+    {
+      "slug": "disney",
+      "name": "Disney+",
+      "logo": {
+        "network": 2739
+      },
+      "regions": {
+        "us": {
+          "region": "US",
+          "providers": "337"
+        },
+        "it": {
+          "region": "IT",
+          "providers": "337"
+        }
+      }
+    },
+    {
+      "slug": "hbo",
+      "name": "HBO Max",
+      "logo": {
+        "network": 3186
+      },
+      "regions": {
+        "us": {
+          "region": "US",
+          "providers": "1899"
+        },
+        "it": {
+          "region": "IT",
+          "providers": "1899"
+        }
+      }
+    },
+    {
+      "slug": "appletv",
+      "name": "Apple TV+",
+      "logo": {
+        "network": 2552
+      },
+      "regions": {
+        "us": {
+          "region": "US",
+          "providers": "350"
+        },
+        "it": {
+          "region": "IT",
+          "providers": "350"
+        }
+      }
+    },
+    {
+      "slug": "paramount",
+      "name": "Paramount+",
+      "logo": {
+        "network": 4330
+      },
+      "regions": {
+        "us": {
+          "region": "US",
+          "providers": "531|2303"
+        },
+        "it": {
+          "region": "IT",
+          "providers": "531"
+        }
+      }
+    },
+    {
+      "slug": "hulu",
+      "name": "Hulu",
+      "logo": {
+        "network": 453
+      },
+      "regions": {
+        "us": {
+          "region": "US",
+          "providers": "15"
+        }
+      }
+    },
+    {
+      "slug": "peacock",
+      "name": "Peacock",
+      "logo": {
+        "network": 3353
+      },
+      "regions": {
+        "us": {
+          "region": "US",
+          "providers": "386"
+        }
+      }
+    },
+    {
+      "slug": "sky",
+      "name": "Sky / NOW (UK)",
+      "logo": {
+        "network": 1063
+      },
+      "regions": {
+        "gb": {
+          "region": "GB",
+          "providers": "29|39"
+        }
+      }
+    },
+    {
+      "slug": "crunchyroll",
+      "name": "Crunchyroll",
+      "logo": {
+        "network": 1112
+      },
+      "regions": {
+        "us": {
+          "region": "US",
+          "providers": "283"
+        },
+        "it": {
+          "region": "IT",
+          "providers": "283"
+        }
+      }
+    },
+    {
+      "slug": "raiplay",
+      "name": "RaiPlay",
+      "logo": {
+        "text": "RaiPlay"
+      },
+      "regions": {
+        "it": {
+          "region": "IT",
+          "providers": "222"
+        }
+      }
+    },
+    {
+      "slug": "now",
+      "name": "NOW",
+      "logo": {
+        "company": 53597
+      },
+      "regions": {
+        "it": {
+          "region": "IT",
+          "providers": "39|29"
+        }
+      }
+    },
+    {
+      "slug": "timvision",
+      "name": "Timvision",
+      "logo": {
+        "company": 120313
+      },
+      "regions": {
+        "it": {
+          "region": "IT",
+          "providers": "109"
+        }
       }
     }
   ]

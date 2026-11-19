@@ -11,8 +11,16 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-from render import fetch_posters, render_cover
-from tmdb import discover, poster_urls
+from render import (
+    fetch_posters,
+    fetch_rgba,
+    prepare_logo,
+    render_cover,
+    render_hero,
+    render_text_logo,
+    render_wordmark,
+)
+from tmdb import discover, logo_url, poster_urls
 
 log = logging.getLogger("nuvio-covers")
 
@@ -34,6 +42,69 @@ def load_config() -> dict:
     return json.loads(CONFIG_PATH.read_text())
 
 
+def _save(img, target: Path, **opts) -> str:
+    """Write next to the target and swap, so clients never see a half-written file."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    tmp = target.with_name(target.stem + ".tmp" + target.suffix)
+    img.save(tmp, **opts)
+    tmp.replace(target)
+    return str(target.relative_to(OUTPUT_DIR))
+
+
+def _jpg(img, target: Path) -> str:
+    return _save(img, target, quality=88, optimize=True, progressive=True)
+
+
+def _png(img, target: Path) -> str:
+    return _save(img, target, optimize=True)
+
+
+def _cover(cfg: dict, cover: dict, seed: int) -> list[str]:
+    results = discover(TMDB_API_KEY, cover["media"], cover["params"], cfg.get("language", "en-US"))
+    posters = fetch_posters(poster_urls(results, cover.get("posters", 12)))
+    if len(posters) < 4:
+        raise RuntimeError(f"{cover['name']}: only {len(posters)} posters, keeping the previous images")
+    folder = OUTPUT_DIR / cover.get("folder", "")
+    text = dict(title=cover["title"], caption=cover["caption"], pill=cover.get("pill", "NEW"), color=cover["color"])
+    written = [_jpg(render_cover(posters, shuffle_seed=seed, **text), folder / f"{cover['name']}.jpg")]
+    if cover.get("hero", True):
+        written.append(_jpg(render_hero(posters, shuffle_seed=seed), folder / f"{cover['name']}-hero.jpg"))
+        written.append(_png(render_text_logo(**text), folder / f"{cover['name']}-logo.png"))
+    return written
+
+
+def _provider_posters(cfg: dict, region: dict) -> list:
+    """Popular recent movies and shows on one service in one region, interleaved."""
+    common = {
+        "watch_region": region["region"],
+        "with_watch_providers": region["providers"],
+        "with_watch_monetization_types": "flatrate|free|ads",
+        "sort_by": "popularity.desc",
+    }
+    movies = discover(TMDB_API_KEY, "movie", {**common, "primary_release_date.gte": "-3y", "vote_count.gte": 20}, cfg.get("language", "en-US"))
+    # no talk shows, news, reality or kids shows: they make a dull wall
+    shows = discover(TMDB_API_KEY, "tv", {**common, "air_date.gte": "-180d", "vote_count.gte": 20, "without_genres": "10767|10763|10764|10762"}, cfg.get("language", "en-US"))
+    urls = []
+    for pair in zip(poster_urls(shows, 10), poster_urls(movies, 10)):
+        urls.extend(pair)
+    return fetch_posters(urls)
+
+
+def _provider(cfg: dict, prov: dict, seed: int) -> list[str]:
+    written = []
+    logo = prov.get("logo", {})
+    url = logo_url(TMDB_API_KEY, network=logo.get("network"), company=logo.get("company"))
+    img = prepare_logo(fetch_rgba(url)) if url else prepare_logo(render_wordmark(logo.get("text", prov["name"]), color=logo.get("color", "#FFFFFF")))
+    written.append(_png(img, OUTPUT_DIR / "brand" / f"{prov['slug']}.png"))
+    for key, region in prov.get("regions", {}).items():
+        posters = _provider_posters(cfg, region)
+        if len(posters) < 6:
+            log.warning("%s/%s: only %d posters, keeping the previous hero", key, prov["slug"], len(posters))
+            continue
+        written.append(_jpg(render_hero(posters, shuffle_seed=seed), OUTPUT_DIR / "piattaforme" / key / f"{prov['slug']}-hero.jpg"))
+    return written
+
+
 def generate_all() -> None:
     if not lock.acquire(blocking=False):
         log.info("generation already running, skipped")
@@ -42,31 +113,22 @@ def generate_all() -> None:
         cfg = load_config()
         week = dt.date.today().isocalendar()
         seed = week[0] * 100 + week[1]  # new shuffle every week, stable within it
-        written = []
-        for cover in cfg["covers"]:
-            results = discover(TMDB_API_KEY, cover["media"], cover["params"], cfg.get("language", "en-US"))
-            posters = fetch_posters(poster_urls(results, cover.get("posters", 12)))
-            if len(posters) < 4:
-                raise RuntimeError(f"{cover['name']}: only {len(posters)} posters, keeping the previous cover")
-            img = render_cover(
-                posters,
-                title=cover["title"],
-                caption=cover["caption"],
-                pill=cover.get("pill", "NEW"),
-                color=cover["color"],
-                shuffle_seed=seed,
-            )
-            target = OUTPUT_DIR / cover.get("folder", "") / f"{cover['name']}.jpg"
-            target.parent.mkdir(parents=True, exist_ok=True)
-            tmp = target.with_suffix(".tmp.jpg")
-            img.save(tmp, quality=88, optimize=True, progressive=True)
-            tmp.replace(target)  # atomic swap, clients never see a half-written file
-            written.append(str(target.relative_to(OUTPUT_DIR)))
-            log.info("wrote %s (%d posters)", target, len(posters))
-        state.update(last_run=dt.datetime.now(TZ).isoformat(timespec="seconds"), last_error=None, covers=written)
-    except Exception as exc:  # keep serving the old covers
-        log.exception("generation failed")
-        state["last_error"] = f"{type(exc).__name__}: {exc}"
+        jobs = [(c["name"], _cover, c) for c in cfg.get("covers", [])]
+        jobs += [(p["slug"], _provider, p) for p in cfg.get("providers", [])]
+        written, errors = [], []
+        for name, job, item in jobs:
+            try:  # one failing item keeps its previous images and does not stop the others
+                files = job(cfg, item, seed)
+                written.extend(files)
+                log.info("%s: wrote %s", name, ", ".join(files))
+            except Exception as exc:
+                log.exception("%s failed", name)
+                errors.append(f"{name}: {type(exc).__name__}: {exc}")
+        state.update(
+            last_run=dt.datetime.now(TZ).isoformat(timespec="seconds"),
+            last_error="; ".join(errors) or None,
+            covers=written,
+        )
     finally:
         lock.release()
 
@@ -116,7 +178,7 @@ class Handler(SimpleHTTPRequestHandler):
         return self._json(202, {"status": "started"})
 
     def end_headers(self):
-        if self.path.endswith(".jpg"):
+        if self.path.endswith((".jpg", ".png")):
             self.send_header("Cache-Control", "public, max-age=21600")
         super().end_headers()
 
